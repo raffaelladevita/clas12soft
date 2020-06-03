@@ -21,7 +21,7 @@ public class FTOFConstants {
         };
         
         DetectorConstants constants = new DetectorConstants();
-        constants.addDouble("/geometry/ftof/panel1a/Length", paddles);
+        constants.addDouble("/geometry/ftof/panel1a/paddles/Length", paddles);
         constants.addDouble("/geometry/ftof/panel1a/panel/paddlewidth",new double[]{ 15.01 });        
         constants.addDouble("/geometry/ftof/panel1a/panel/paddlethickness", new double[] {5.08});
         constants.addDouble("/geometry/ftof/panel1a/panel/thtilt",          new double[] {25});

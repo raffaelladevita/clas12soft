@@ -5,8 +5,11 @@
  */
 package org.clas12.geometry.ftof;
 
+import java.util.Arrays;
+import org.clas12.geometry.db.DatabaseConstantProvider;
 import org.jlab.jnp.detector.base.ConstantProvider;
 import org.jlab.jnp.detector.base.Detector;
+import org.jlab.jnp.detector.base.DetectorConstants;
 import org.jlab.jnp.detector.base.Factory;
 import org.jlab.jnp.geom.geant4.G4Detector;
 import org.jlab.jnp.geom.geant4.G4LogVolume;
@@ -65,7 +68,7 @@ private Point3D[] sectorRotation = new Point3D[]{
         double theta_min      = cp.getDouble("/geometry/ftof/panel1a/panel/thmin", 0);
         double tiltedOffset   = dist2edge*Math.cos(rotationY - Math.toRadians(theta_min));
         System.out.println("DIST 2 EDGE =  " +  dist2edge + " TILTED OFFSET = " + tiltedOffset );
-        int    nPaddles       = cp.length("/geometry/ftof/panel1a/Length");
+        int    nPaddles       = cp.length("/geometry/ftof/panel1a/paddles/Length");
         edge.set(dist2edge*Math.sin(Math.toRadians(theta_min)), 0, dist2edge*Math.cos(Math.toRadians(theta_min)));
         edge.show();
         
@@ -81,7 +84,7 @@ private Point3D[] sectorRotation = new Point3D[]{
         // Create volumes SOLIDS (box) for paddles
         // and define volumes to be used in each sector.
         for(int i = 0; i < nPaddles; i++){
-            double length = cp.getDouble("/geometry/ftof/panel1a/Length",i);
+            double length = cp.getDouble("/geometry/ftof/panel1a/paddles/Length",i);
             Geant4Solid paddle = new Geant4Solid(Geant4Shape.BOX, new double[]{length,thikness,width});
             paddle.setId(0,1,i+1); // 0 means used in all sectors, 1 - layer one (1A), i+1 paddle number
             g4d.addSolid(paddle);
@@ -90,8 +93,8 @@ private Point3D[] sectorRotation = new Point3D[]{
             g4d.addVolume(G4Unit.construct(0,1,i+1), volume);
         }
         
-        double  p1a_L = cp.getDouble("/geometry/ftof/panel1a/Length",0);
-        double p23a_L = cp.getDouble("/geometry/ftof/panel1a/Length",nPaddles-1);
+        double  p1a_L = cp.getDouble("/geometry/ftof/panel1a/paddles/Length",0);
+        double p23a_L = cp.getDouble("/geometry/ftof/panel1a/paddles/Length",nPaddles-1);
         double height = (nPaddles+1)*width;
         
         for(int sector = 0; sector < 6; sector++){
@@ -157,8 +160,16 @@ private Point3D[] sectorRotation = new Point3D[]{
     
     @Override
     public Detector createDetector(int run, String variation) {
-        ConstantProvider cp = FTOFConstants.getDetectorConstants();
-        return this.createDetector(cp);
+        //ConstantProvider cp = FTOFConstants.getDetectorConstants();
+        DatabaseConstantProvider provider = new DatabaseConstantProvider(10,"default");
+        DetectorConstants dc = provider.read(
+                Arrays.asList(new String[]{
+                    "/geometry/ftof/panel1a/panel",
+                    "/geometry/ftof/panel1a/paddles"
+                }));
+        dc.show();
+        provider.disconnect();
+        return this.createDetector(dc);
     }
 
     @Override
