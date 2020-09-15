@@ -24,11 +24,11 @@ import org.jlab.jnp.geom.prim.Mesh3D;
  */
 public class FTOFDetector extends AbstractDetector<ScintilatorPaddle> {
     
-    private int componentsInLayer(int layer){
+    public int componentsInLayer(int layer){
        switch(layer){
-           case 0: return 23;
-           case 1: return 62;
-           case 2: return 5;
+           case 1: return 23;
+           case 2: return 62;
+           case 3: return 5;
            default: break;
        } 
        return 0;

@@ -7,6 +7,7 @@ package org.clas12.geometry.ftof;
 
 import java.util.Arrays;
 import org.clas12.geometry.db.DatabaseConstantProvider;
+//import org.clas12.geometry.units.SystemOfUnits.Length;
 import org.jlab.jnp.detector.base.ConstantProvider;
 import org.jlab.jnp.detector.base.Detector;
 import org.jlab.jnp.detector.base.DetectorConstants;
@@ -26,7 +27,13 @@ import org.jlab.jnp.geom.prim.Point3D;
  */
 public class FTOFFactory implements Factory {
 
+    private final double motherGap = 4.0;
     
+    private final String[] stringLayers = new String[]{
+        "/geometry/ftof/panel1a",
+        "/geometry/ftof/panel1b",
+        "/geometry/ftof/panel2"};
+
     private double[] sectorRotationX = new double[]{};
     private double[] sectorRotationY = new double[]{};
     private double[] sectorRotationZ = new double[]{};
@@ -52,8 +59,8 @@ private Point3D[] sectorRotation = new Point3D[]{
     @Override
     public Detector createDetector(ConstantProvider cp) {
         FTOFDetector detector = new FTOFDetector();
-        System.out.println(">>> creating layer 1a.....");
-        this.constrcutFTOF1A(detector, cp);
+        System.out.println(">>> creating layer FTOF.....");
+        this.constrcutFTOF(detector, cp);
         return detector;
     }
 
@@ -158,6 +165,120 @@ private Point3D[] sectorRotation = new Point3D[]{
         
     }
     
+    private void constrcutFTOF(FTOFDetector detector, ConstantProvider cp){
+        
+        int nSectors = detector.getCount();
+        int nLayers  = detector.getCount(0);
+        System.out.println("Building detector with " + nSectors + " sectors and " + nLayers + " layers");
+        
+        // for each layers
+        for(int ilayer=0; ilayer<nLayers; ilayer++) {
+            int layer = ilayer+1;
+            double thtilt    = cp.getDouble(stringLayers[ilayer] + "/panel/thtilt", 0);
+            double thmin     = cp.getDouble(stringLayers[ilayer] + "/panel/thmin", 0);
+            double dist2edge = cp.getDouble(stringLayers[ilayer] + "/panel/dist2edge", 0);
+            double gap       = cp.getDouble(stringLayers[ilayer] + "/panel/gap", 0);
+            double pairgap   = 0;
+            if(layer==2) pairgap = cp.getDouble(stringLayers[ilayer] + "/panel/pairgap", 0);
+        
+            // create paddles as G4BOX and add them to detector
+            int nPaddles = detector.componentsInLayer(layer);
+            double width      = cp.getDouble(stringLayers[layer - 1] + "/panel/paddlewidth", 0);
+            double thickness  = cp.getDouble(stringLayers[layer - 1] + "/panel/paddlethickness", 0);
+            G4Detector g4d = detector.getGeantDetector();
+            for(int i = 0; i < nPaddles; i++){
+                int component = i+1;
+                double length = cp.getDouble(stringLayers[ilayer] + "/paddles/Length",i);
+                Geant4Solid paddle = new Geant4Solid(Geant4Shape.BOX, new double[]{length/2,thickness/2,width/2});
+                paddle.setId(0,layer,component); // 0 means used in all sectors, 1 - layer one (1A), i+1 paddle number
+                g4d.addSolid(paddle);
+                G4Volume volume = new G4Volume(0,layer,component);
+                volume.solid(G4Unit.construct(0,layer,component));
+                g4d.addVolume(G4Unit.construct(0,layer,component), volume);
+            }
+
+//            int ipair = (int) ipaddle/2;
+//            double zoffset = (ipaddle - numPaddles / 2. + 0.5) * (paddlewidth + gap);
+//            if(layer==2) zoffset = (ipair - numPaddles/4-0.5) * (2*paddlewidth + gap + pairgap) + ((ipaddle%2)+0.5) * (paddlewidth + gap);
+
+            // for each sector
+            for(int isector = 0; isector < nSectors;  isector++){
+                int sector = isector+1;
+                
+                // create mother volumes as G4TRDs
+                double shortedge =  cp.getDouble(stringLayers[ilayer] + "/paddles/Length",0);
+                double longedge  = (cp.getDouble(stringLayers[ilayer] + "/paddles/Length",nPaddles-1) +
+                                    cp.getDouble(stringLayers[ilayer] + "/paddles/Length",nPaddles-1) -
+                                    cp.getDouble(stringLayers[ilayer] + "/paddles/Length",nPaddles-2));
+                double height = (nPaddles * width + (nPaddles-1) * gap);
+                if(layer==2) height = height + nPaddles/2 * pairgap; //FIXME PROBABLE WRONG
+                Geant4Solid secMother = new Geant4Solid(Geant4Shape.TRD, new double[]{shortedge/2+motherGap,
+                                                                                      longedge/2+motherGap,
+                                                                                      thickness/2+motherGap, 
+                                                                                      thickness/2+motherGap,
+                                                                                      height/2+motherGap});
+                secMother.setId(sector,layer,0);
+                g4d.addSolid(secMother);
+                
+                G4LogVolume secVolume = new G4LogVolume();
+                secVolume.setId(sector,layer,0);
+                secVolume.setSolidRef(G4Unit.construct(sector,layer,0));
+                
+                // define rotations
+                int index = isector*nLayers + ilayer;
+                double rotX = cp.getDouble("/geometry/ftof/alignment/rotX", index);
+                double rotY = cp.getDouble("/geometry/ftof/alignment/rotY", index);
+                double rotZ = cp.getDouble("/geometry/ftof/alignment/rotZ", index);
+//                secVolume.setRotation(rotX,rotY,rotZ);
+//                secVolume.setRotation(180, thtilt-90, -90);
+                Point3D myrot = new Point3D(Math.toRadians(-30.0 - sector * 60.0), Math.toRadians(0.0), Math.toRadians(-90-thtilt));
+                myRotationMatrix r = new myRotationMatrix();
+                r.setZYX(myrot.x(), myrot.y(), myrot.z());
+                r.show();
+                System.out.println(Math.toDegrees(myrot.x()) + " " + Math.toDegrees(myrot.y()) + " " + Math.toDegrees(myrot.z()));
+                System.out.println(Math.toDegrees(r.getRotations()[0]) + " " + Math.toDegrees(r.getRotations()[1]) + " " + Math.toDegrees(r.getRotations()[2]));  
+                System.out.println(sectorRotation[isector].x() + " " + sectorRotation[isector].y() + " " + sectorRotation[isector].z());
+                
+//                secVolume.setRotation(sectorRotation[isector].x(), sectorRotation[isector].y(), sectorRotation[isector].z());
+                secVolume.setRotation(Math.toDegrees(r.getRotations()[0]), Math.toDegrees(r.getRotations()[1]), Math.toDegrees(r.getRotations()[2]));
+                    
+                // define shifts to positions mother volumes
+                // get alignment shifts from CCDB (these are defined in the tilted sector coordinate frame)
+                double deltaX = cp.getDouble("/geometry/ftof/alignment/deltaX", index);
+                double deltaY = cp.getDouble("/geometry/ftof/alignment/deltaY", index);
+                double deltaZ = cp.getDouble("/geometry/ftof/alignment/deltaZ", index);
+                // define position for sector 1
+                double moveX = dist2edge * Math.sin(Math.toRadians(thmin)) + 
+                             (height/2 + deltaX) * Math.cos(Math.toRadians(thtilt)) + 
+                             ((thickness+motherGap)/2 + deltaZ) * Math.sin(Math.toRadians(thtilt));
+                double moveY = deltaY;
+                double moveZ = dist2edge * Math.cos(Math.toRadians(thmin)) - 
+                             (height/2 + deltaX) * Math.sin(Math.toRadians(thtilt)) + 
+                             ((thickness+motherGap)/2 + deltaZ) * Math.cos(Math.toRadians(thtilt));
+                Point3D panelCenter = new Point3D(moveX,moveY,moveZ);
+                panelCenter.rotateZ(Math.toRadians(isector*60));
+                secVolume.setPosition(panelCenter.x(),panelCenter.y(),panelCenter.z());
+                
+//                double offset = -nPaddles*width/2.0;
+                for(int i = 0 ; i < nPaddles; i++){
+                    int paddle = i+1;
+                    int ipair = (int) i/2;
+                    double offset = (i - nPaddles / 2. + 0.5) * (width + gap);
+                    if(layer==2) offset = (ipair - nPaddles/4-0.5) * (2*width + gap + pairgap) + ((i%2)+0.5) * (width + gap);
+                    G4PhysVolume paddlePhysVol = new G4PhysVolume(0,layer,paddle);
+                    paddlePhysVol.setVolumeRef(G4Unit.construct(0,layer,paddle));
+                    paddlePhysVol.setPosition(0.0, 0.0, offset);
+//                    offset += width;
+                    secVolume.addVolume(paddlePhysVol);
+                }
+
+                g4d.addLogVolume(G4Unit.construct(sector,layer,0), secVolume);
+            }
+                
+        }
+        
+    }
+    
     @Override
     public Detector createDetector(int run, String variation) {
         //ConstantProvider cp = FTOFConstants.getDetectorConstants();
@@ -165,7 +286,12 @@ private Point3D[] sectorRotation = new Point3D[]{
         DetectorConstants dc = provider.read(
                 Arrays.asList(new String[]{
                     "/geometry/ftof/panel1a/panel",
-                    "/geometry/ftof/panel1a/paddles"
+                    "/geometry/ftof/panel1a/paddles",
+                    "/geometry/ftof/panel1b/panel",
+                    "/geometry/ftof/panel1b/paddles",
+                    "/geometry/ftof/panel2/panel",
+                    "/geometry/ftof/panel2/paddles",
+                    "/geometry/ftof/alignment"
                 }));
         dc.show();
         provider.disconnect();
