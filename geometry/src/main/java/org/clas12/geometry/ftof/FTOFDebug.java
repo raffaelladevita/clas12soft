@@ -14,6 +14,7 @@ import org.jlab.jnp.detector.base.DetectorManager;
 import org.jlab.jnp.detector.base.DetectorType;
 import org.jlab.jnp.detector.component.ScintilatorPaddle;
 import org.jlab.jnp.geom.geant4.GDMLExporter;
+import org.jlab.jnp.geom.prim.Line3D;
 import org.jlab.jnp.geom.prim.Mesh3D;
 import org.jlab.jnp.geom.prim.Path3D;
 import org.jlab.jnp.geom.prim.Point3D;
@@ -34,17 +35,17 @@ public class FTOFDebug {
         List<Point3D> intersections = new ArrayList<>();
         List<DetectorHit> hits      = new ArrayList<>();
                 path.generateRandom(0.0, 0.0, 0.0, 
-                        Math.toRadians(20.0), Math.toRadians(20.0), 
+                        Math.toRadians(20.70), Math.toRadians(20.705), 
                         Math.toRadians(0.0), 
                         Math.toRadians(0.0), 
                         800.0, 2);
-        for(int loop = 1; loop < 62; loop++){
+        for(int loop = 1; loop < 23; loop++){
 
             for(int isector = 0; isector < 1; isector++){
                 
                 intersections.clear();
 //                det.getBoundary(boundary, DetectorFrame.CLAS, isector+1,2,0);
-                det.getComponent(comp, DetectorFrame.CLAS, isector+1,2,loop);
+                det.getComponent(comp, DetectorFrame.CLAS, isector+1,1,loop);
                 
                 
 //                boundary.intersectionPath(path, intersections);
@@ -53,6 +54,9 @@ public class FTOFDebug {
                         i+1, intersections.size()));*/
                 if(intersections.size()>0){
                     //if(i==0||i==3)
+                    comp.show();  
+                    Line3D line = new Line3D(); comp.getLine(line); System.out.println(line.toString());
+                    comp.getMesh().show();
                     System.out.println((isector+1) + " " + " " + loop);
                     System.out.println(intersections.size());
                     if(intersections.size()<2) continue;

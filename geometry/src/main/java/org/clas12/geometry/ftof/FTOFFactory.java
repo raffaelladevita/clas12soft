@@ -186,14 +186,17 @@ private Point3D[] sectorRotation = new Point3D[]{
             double width      = cp.getDouble(stringLayers[layer - 1] + "/panel/paddlewidth", 0);
             double thickness  = cp.getDouble(stringLayers[layer - 1] + "/panel/paddlethickness", 0);
             G4Detector g4d = detector.getGeantDetector();
+//            g4d.setPrefix("ftof");
             for(int i = 0; i < nPaddles; i++){
                 int component = i+1;
                 double length = cp.getDouble(stringLayers[ilayer] + "/paddles/Length",i);
                 Geant4Solid paddle = new Geant4Solid(Geant4Shape.BOX, new double[]{length/2,thickness/2,width/2});
                 paddle.setId(0,layer,component); // 0 means used in all sectors, 1 - layer one (1A), i+1 paddle number
+//                paddle.setPrefix("ftof");
                 g4d.addSolid(paddle);
                 G4Volume volume = new G4Volume(0,layer,component);
                 volume.solid(G4Unit.construct(0,layer,component));
+//                volume.setPrefix("ftof");
                 g4d.addVolume(G4Unit.construct(0,layer,component), volume);
             }
 
@@ -218,9 +221,11 @@ private Point3D[] sectorRotation = new Point3D[]{
                                                                                       thickness/2+motherGap,
                                                                                       height/2+motherGap});
                 secMother.setId(sector,layer,0);
+//                secMother.setPrefix("ftof");
                 g4d.addSolid(secMother);
                 
                 G4LogVolume secVolume = new G4LogVolume();
+//                secVolume.setPrefix("ftof");
                 secVolume.setId(sector,layer,0);
                 secVolume.setSolidRef(G4Unit.construct(sector,layer,0));
                 
@@ -268,6 +273,7 @@ private Point3D[] sectorRotation = new Point3D[]{
                     G4PhysVolume paddlePhysVol = new G4PhysVolume(0,layer,paddle);
                     paddlePhysVol.setVolumeRef(G4Unit.construct(0,layer,paddle));
                     paddlePhysVol.setPosition(0.0, 0.0, offset);
+//                    paddlePhysVol.setPrefix("ftof");
 //                    offset += width;
                     secVolume.addVolume(paddlePhysVol);
                 }
